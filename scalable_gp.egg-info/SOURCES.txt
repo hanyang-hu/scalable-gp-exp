@@ -1,8 +1,0 @@
-setup.py
-scalable_gp.egg-info/PKG-INFO
-scalable_gp.egg-info/SOURCES.txt
-scalable_gp.egg-info/dependency_links.txt
-scalable_gp.egg-info/top_level.txt
-scripts/__init__.py
-scripts/fast_cache_predict.py
-scripts/subsampling.py
