@@ -1,3 +1,4 @@
 build/
 scalable_gp.egg-info/
 __pycache__/
+results/
