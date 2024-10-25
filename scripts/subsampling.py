@@ -52,18 +52,18 @@ def farthest_point_sampling_keops(X, n_samples):
     from pykeops.torch import Genred
     formula = "SqDist(x, y)"
     variables = [f"x = Vi({d})", f"y = Vj({d})"]
-    routine = Genred(formula, variables, reduction_op="Min", axis=0)
+    routine = Genred(formula, variables, reduction_op="Min", axis=1)
 
     x_mean = X.mean(dim=0)
     l = torch.argmin((X - x_mean).norm(dim=-1))
-    dist = routine(x=X, y=X[l].unsqueeze(0)).squeeze()
+    dist = routine(X, X[l].unsqueeze(0)).squeeze(-1)
     subsamples = [l.item()]
     progress_bar = tqdm.tqdm(range(n_samples - 1), desc="Farthest Point Sampling (KeOps)")
     for _ in progress_bar:
         subsampled_X = X[subsamples].reshape(len(subsamples), d)
         dist = torch.min(
             dist, 
-            routine(x=X, y=subsampled_X).min(dim=-1).values
+            routine(X, subsampled_X).squeeze(-1)
         )
         l = torch.argmax(dist)
         subsamples.append(l.item())
