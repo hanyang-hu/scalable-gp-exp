@@ -25,6 +25,7 @@ if __name__ == '__main__':
     argparser.add_argument('--method', '-m', type=str, default='FPS', choices=subsample_methods.keys(), help="Subsampling method to use.")
     argparser.add_argument('--iter', type=int, default=100, help="Number of iterations for training the GP model.")
     argparser.add_argument('--keops', type=bool, default=False, help="Use KeOps for GP model.")
+    argparser.add_argument('--ast', type=bool, default=False, help="Use FPS to first learn a subsampled model, then re-weight the points for subsampling.")
 
     args = argparser.parse_args()
 
@@ -37,33 +38,94 @@ if __name__ == '__main__':
     y_train = torch.tensor(y_train, dtype=torch.float32).squeeze(-1)
     X_test = torch.tensor(X_test, dtype=torch.float32)
     y_test = torch.tensor(y_test, dtype=torch.float32).squeeze(-1)
-
     X_train = X_train.to(device)
     y_train = y_train.to(device)
 
-    # subsample the training data
-    subsample_method = subsample_methods[args.method]
-    if args.fraction == 1.0:
-        subsampled_idx = torch.arange(len(X_train))
-    else:
-        subsampled_idx = subsample_method(X_train, int(len(X_train) * args.fraction))
-
+    X_test = X_test.to(device)
+    y_test = y_test.to(device)
+    X_test = X_test.to(device)
+    y_test = y_test.to(device)
+    
     # standardize the data
-    subsampled_X = X_train[subsampled_idx].to(device)
-    subsampled_y = y_train[subsampled_idx].to(device)
-    X_test = X_test.to(device)
-    y_test = y_test.to(device)
-    mean_X = subsampled_X.mean(dim=0)
-    std_X = subsampled_X.std(dim=0) + 1e-7
-    subsampled_X = (subsampled_X - mean_X) / std_X
-    mean_y = subsampled_y.mean()
-    std_y = subsampled_y.std() + 1e-7
-    subsampled_y = (subsampled_y - mean_y) / std_y
-
-    X_test = X_test.to(device)
+    mean_X = X_train.mean(dim=0)
+    std_X = X_train.std(dim=0) + 1e-7
+    X_train = (X_train - mean_X) / std_X
     X_test = (X_test - mean_X) / std_X
-    y_test = y_test.to(device)
+
+    mean_y = y_train.mean()
+    std_y = y_train.std() + 1e-7
+    y_train = (y_train - mean_y) / std_y
     y_test = (y_test - mean_y) / std_y
+
+    if args.ast:
+        subsample_method = subsample_methods['FPS']
+        if args.fraction == 1.0:
+            subsampled_idx = torch.arange(len(X_train))
+        else:
+            subsampled_idx = subsample_method(X_train, int(len(X_train) * args.fraction))
+        subsampled_X = X_train[subsampled_idx].to(device)
+        subsampled_y = y_train[subsampled_idx].to(device)
+
+         # initialize likelihood and model
+        likelihood = gpytorch.likelihoods.GaussianLikelihood().cuda()
+        if args.keops:
+            model = models.ExactGPRBFKeOps(subsampled_X, subsampled_y, likelihood).cuda()
+        else:
+            model = models.ExactGPRBF(subsampled_X, subsampled_y, likelihood).cuda()
+
+        # Find optimal model hyperparameters
+        model.train()
+        likelihood.train()
+
+        # Use the adam optimizer
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.1)  # Includes GaussianLikelihood parameters
+
+        # "Loss" for GPs - the marginal log likelihood
+        mll = gpytorch.mlls.ExactMarginalLogLikelihood(model.likelihood, model)
+
+        training_iter = args.iter
+        iterator = tqdm.tqdm(range(training_iter), desc="Pre-Training")
+        for i in iterator:
+            # Zero gradients from previous iteration
+            optimizer.zero_grad()
+            # Output from model
+            output = model(subsampled_X)
+            # Calc loss and backprop gradients
+            loss = -mll(output, subsampled_y)
+            print_values = dict(
+                loss=loss.item(),
+                ls=model.covar_module.base_kernel.lengthscale.norm().item(),
+                os=model.covar_module.outputscale.item(),
+                noise=model.likelihood.noise.item(),
+                mu=model.mean_module.constant.item(),
+            )
+            iterator.set_postfix(**print_values)
+            loss.backward()
+            optimizer.step()
+
+        lengthscale = model.covar_module.base_kernel.lengthscale.detach().clone()
+
+        del model
+
+        # re-scale training data using the learned lengthscale
+        lengthscale = lengthscale / lengthscale.prod() ** (1 / len(lengthscale))
+        X_train_scaled = X_train * lengthscale
+
+        # subsample the training data
+        subsampled_idx = subsample_method(X_train_scaled, int(len(X_train) * args.fraction))
+        subsampled_X = X_train[subsampled_idx].to(device)
+        subsampled_y = y_train[subsampled_idx].to(device)
+        
+    else:
+        # subsample the training data
+        subsample_method = subsample_methods[args.method]
+        if args.fraction == 1.0:
+            subsampled_idx = torch.arange(len(X_train))
+        else:
+            subsampled_idx = subsample_method(X_train, int(len(X_train) * args.fraction))
+
+        subsampled_X = X_train[subsampled_idx].to(device)
+        subsampled_y = y_train[subsampled_idx].to(device)
 
     # initialize likelihood and model
     likelihood = gpytorch.likelihoods.GaussianLikelihood().cuda()
@@ -105,7 +167,7 @@ if __name__ == '__main__':
     model.eval()
 
     # test the model, compute RMSE and NLL
-    with torch.no_grad():
+    with torch.no_grad(), gpytorch.settings.fast_pred_var():
         preds = model.likelihood(model(X_test))
         rmse = torch.sqrt(torch.mean((preds.mean - y_test) ** 2)).item()
         nll = -torch.distributions.Normal(preds.mean, preds.stddev).log_prob(y_test).mean().item()
@@ -125,7 +187,8 @@ if __name__ == '__main__':
         'method': args.method,
         'seed': args.seed,
         'rmse': rmse,
-        'nll': nll
+        'nll': nll, 
+        'ast': args.ast,
     }
 
     results_file = 'results/offline_subsampling_exp.json'
@@ -138,7 +201,7 @@ if __name__ == '__main__':
     # check if the same experiment has been run before
     same_exp = False
     for i in range(len(all_results)):
-        if all([all_results[i][k] == results[k] for k in ["dataset", "split", "fraction", "method", "seed"]]):
+        if all([all_results[i][k] == results[k] for k in ["dataset", "split", "fraction", "method", "seed", "ast"]]):
             all_results[i] = results
             same_exp = True
             break
