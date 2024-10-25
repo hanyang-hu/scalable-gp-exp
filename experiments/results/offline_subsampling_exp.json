@@ -1,0 +1,20 @@
+[
+    {
+        "dataset": "elevators",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "FPS",
+        "seed": 42,
+        "rmse": 0.4109204113483429,
+        "nll": 0.5553228855133057
+    },
+    {
+        "dataset": "elevators",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "FPS",
+        "seed": 42,
+        "rmse": 0.41083255410194397,
+        "nll": 0.5509311556816101
+    }
+]

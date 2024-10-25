@@ -2,38 +2,19 @@ from uci_datasets import Dataset
 import gpytorch
 import torch
 
-from scripts import subsampling
+from scripts import subsampling, models
 
 subsample_methods = {
     'random_sampling': subsampling.random_sampling,
     'FPS': subsampling.farthest_point_sampling,
+    'FPS_keops': subsampling.farthest_point_sampling_keops,
     'anchor_net': subsampling.anchor_net_method
 }
-
-
-# We will use the simplest form of GP model, exact inference
-# We choose Matern kernel with nu=5/2
-class ExactGPModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood):
-        dim = train_x.size(-1)
-        super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.MaternKernel(
-                ard_num_dims=dim,
-                nu=2.5
-            )
-        )
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
     
 
 if __name__ == '__main__':
     import argparse
     import tqdm
-    import time
 
     argparser = argparse.ArgumentParser()
 
@@ -41,8 +22,9 @@ if __name__ == '__main__':
     argparser.add_argument('--fraction', '-f', type=float, default=0.1, help="Proportion of the dataset to subsample.")
     argparser.add_argument('--split', type=int, default=0, choices=range(0, 10), help="10-fold cross validation split of the dataset.")
     argparser.add_argument('--seed', type=int, default=42, help="Random seed, default to be 42.")
-    argparser.add_argument('--method', '-m', type=str, default='FPS', choices=['random_sampling', 'FPS', 'anchor_net'], help="Subsampling method to use.")
+    argparser.add_argument('--method', '-m', type=str, default='FPS', choices=subsample_methods.keys(), help="Subsampling method to use.")
     argparser.add_argument('--iter', type=int, default=100, help="Number of iterations for training the GP model.")
+    argparser.add_argument('--keops', type=bool, default=False, help="Use KeOps for GP model.")
 
     args = argparser.parse_args()
 
@@ -51,10 +33,13 @@ if __name__ == '__main__':
 
     data = Dataset(args.dataset)
     X_train, y_train, X_test, y_test = data.get_split(split=args.split)
-    X_train = torch.tensor(X_train, dtype=torch.float32).to(device)
-    y_train = torch.tensor(y_train, dtype=torch.float32).to(device).squeeze(-1)
-    X_test = torch.tensor(X_test, dtype=torch.float32).to(device)
-    y_test = torch.tensor(y_test, dtype=torch.float32).to(device).squeeze(-1)
+    X_train = torch.tensor(X_train, dtype=torch.float32)
+    y_train = torch.tensor(y_train, dtype=torch.float32).squeeze(-1)
+    X_test = torch.tensor(X_test, dtype=torch.float32)
+    y_test = torch.tensor(y_test, dtype=torch.float32).squeeze(-1)
+
+    X_train = X_train.to(device)
+    y_train = y_train.to(device)
 
     # subsample the training data
     subsample_method = subsample_methods[args.method]
@@ -66,6 +51,8 @@ if __name__ == '__main__':
     # standardize the data
     subsampled_X = X_train[subsampled_idx].to(device)
     subsampled_y = y_train[subsampled_idx].to(device)
+    X_test = X_test.to(device)
+    y_test = y_test.to(device)
     mean_X = subsampled_X.mean(dim=0)
     std_X = subsampled_X.std(dim=0) + 1e-7
     subsampled_X = (subsampled_X - mean_X) / std_X
@@ -80,7 +67,10 @@ if __name__ == '__main__':
 
     # initialize likelihood and model
     likelihood = gpytorch.likelihoods.GaussianLikelihood().cuda()
-    model = ExactGPModel(subsampled_X, subsampled_y, likelihood).cuda()
+    if args.keops:
+        model = models.ExactGPRBFKeOps(subsampled_X, subsampled_y, likelihood).cuda()
+    else:
+        model = models.ExactGPRBF(subsampled_X, subsampled_y, likelihood).cuda()
 
     # Find optimal model hyperparameters
     model.train()
@@ -94,7 +84,6 @@ if __name__ == '__main__':
 
     training_iter = args.iter
     iterator = tqdm.tqdm(range(training_iter), desc="Training")
-    start_time = time.time()
     for i in iterator:
         # Zero gradients from previous iteration
         optimizer.zero_grad()
@@ -121,12 +110,42 @@ if __name__ == '__main__':
         rmse = torch.sqrt(torch.mean((preds.mean - y_test) ** 2)).item()
         nll = -torch.distributions.Normal(preds.mean, preds.stddev).log_prob(y_test).mean().item()
 
-    # save the results to a folder "./results/"
+    # save the results to "./results/ooffline_subsampling_exp.json"
+    # if the same experiment is run multiple times, replace the file with the new results
+    import json
     import os
 
-    if not os.path.exists('./results/'):
-        os.makedirs('./results/')
+    if not os.path.exists('results'):
+        os.makedirs('results')
 
-    with open(f'./results/{args.dataset}_{args.method}_{args.fraction}_{args.split}_{args.seed}.txt', 'w') as f:
-        f.write(f'RMSE: {rmse}\n')
-        f.write(f'NLL: {nll}\n')
+    results = {
+        'dataset': args.dataset,
+        'split': args.split,
+        'fraction': args.fraction,
+        'method': args.method,
+        'seed': args.seed,
+        'rmse': rmse,
+        'nll': nll
+    }
+
+    results_file = 'results/offline_subsampling_exp.json'
+    if os.path.exists(results_file):
+        with open(results_file, 'r') as f:
+            all_results = json.load(f)
+    else:
+        all_results = []
+
+    # check if the same experiment has been run before
+    same_exp = False
+    for i in range(len(all_results)):
+        if all([all_results[i][k] == results[k] for k in ["dataset", "split", "fraction", "method", "seed"]]):
+            all_results[i] = results
+            same_exp = True
+            break
+    if not same_exp:
+        all_results.append(results)
+
+    with open(results_file, 'w') as f:
+        json.dump(all_results, f, indent=4)
+    print(f"Results saved to {results_file}")
+    print(json.dumps(results, indent=4))

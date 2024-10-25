@@ -1,6 +1,7 @@
 import torch
 import math
 from scripts import utils
+import tqdm
 
 
 """
@@ -26,11 +27,43 @@ def farthest_point_sampling(X, n_samples):
     l = torch.argmin((X - x_mean).norm(dim=-1))
     dist = torch.cdist(X, X[l].unsqueeze(0)).squeeze()
     subsamples = [l.item()]
-    for _ in range(n_samples - 1):
+    progress_bar = tqdm.tqdm(range(n_samples - 1), desc="Farthest Point Sampling")
+    for _ in progress_bar:
         subsampled_X = X[subsamples].reshape(len(subsamples), d)
         dist = torch.min(
             dist, 
             torch.cdist(X, subsampled_X).min(dim=-1).values
+        )
+        l = torch.argmax(dist)
+        subsamples.append(l.item())
+    return subsamples
+
+
+"""
+Farthest point sampling (FPS) using KeOps to reduce the computational cost.
+Inputs:
+    X: torch.Tensor, shape (n_samples, n_features)
+    n_samples: int, number of subsamples
+"""
+def farthest_point_sampling_keops(X, n_samples):
+    _, d = X.shape
+
+    # Define the expression to be computed in KeOps
+    from pykeops.torch import Genred
+    formula = "SqDist(x, y)"
+    variables = [f"x = Vi({d})", f"y = Vj({d})"]
+    routine = Genred(formula, variables, reduction_op="Min", axis=0)
+
+    x_mean = X.mean(dim=0)
+    l = torch.argmin((X - x_mean).norm(dim=-1))
+    dist = routine(x=X, y=X[l].unsqueeze(0)).squeeze()
+    subsamples = [l.item()]
+    progress_bar = tqdm.tqdm(range(n_samples - 1), desc="Farthest Point Sampling (KeOps)")
+    for _ in progress_bar:
+        subsampled_X = X[subsamples].reshape(len(subsamples), d)
+        dist = torch.min(
+            dist, 
+            routine(x=X, y=subsampled_X).min(dim=-1).values
         )
         l = torch.argmax(dist)
         subsamples.append(l.item())
@@ -106,7 +139,7 @@ Inputs:
     n_samples: int, number of low-discrepancy points to generate
     tau_factor: int, number of G-sets is O(n_samples) controlled by tau_factor
 """
-def anchor_net_method(X, n_samples, tau_factor=0.3):
+def anchor_net_method(X, n_samples, tau_factor=2):
     X = X.clone()
     anchor_net = get_anchor_net(X, n_samples, tau_factor)
 

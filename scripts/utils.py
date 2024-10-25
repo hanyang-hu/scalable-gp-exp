@@ -29,7 +29,14 @@ Inputs:
 def get_adaptive_tensor_grid(n_samples, bounds):
     n_dims = len(bounds)
     lengths = [b[1] - b[0] for b in bounds]
-    num_nodes = apportionment(math.floor(n_samples ** (1/n_dims))+n_dims, lengths)
+    i = 0
+    num_nodes = apportionment(math.floor(n_samples ** (1/n_dims)), lengths)
+    num_nodes = [max(n, 1) for n in num_nodes]
+    while math.prod(num_nodes) <= n_samples:
+        num_nodes = apportionment(math.floor(n_samples ** (1/n_dims)) + i, lengths)
+        num_nodes = [max(n, 1) for n in num_nodes]
+        i += 1
+    num_nodes = apportionment(math.floor(n_samples ** (1/n_dims)) + (i-1), lengths)
     grid_lst = torch.meshgrid(
         *[torch.linspace(b[0] + (b[1] - b[0]) / (2 * num_nodes[i]), b[1] - (b[1] - b[0]) / (2 * num_nodes[i]), num_nodes[i]) for i, b in enumerate(bounds)],
         indexing="ij"
