@@ -58,7 +58,7 @@ if __name__ == '__main__':
     y_test = (y_test - mean_y) / std_y
 
     if args.ast:
-        subsample_method = subsample_methods['FPS']
+        subsample_method = subsample_methods['FPS_keops']
         if args.fraction == 1.0:
             subsampled_idx = torch.arange(len(X_train))
         else:
@@ -115,7 +115,7 @@ if __name__ == '__main__':
         subsampled_idx = subsample_method(X_train_scaled, int(len(X_train) * args.fraction))
         subsampled_X = X_train[subsampled_idx].to(device)
         subsampled_y = y_train[subsampled_idx].to(device)
-        
+
     else:
         # subsample the training data
         subsample_method = subsample_methods[args.method]

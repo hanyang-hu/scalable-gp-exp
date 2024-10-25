@@ -1,0 +1,602 @@
+[
+    {
+        "dataset": "elevators",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.4147663116455078,
+        "nll": 0.5713725686073303,
+        "ast": false
+    },
+    {
+        "dataset": "elevators",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.4167042374610901,
+        "nll": 0.5770530104637146,
+        "ast": false
+    },
+    {
+        "dataset": "elevators",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.41545549035072327,
+        "nll": 0.5451916456222534,
+        "ast": false
+    },
+    {
+        "dataset": "elevators",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.3951609134674072,
+        "nll": 0.5155713558197021,
+        "ast": false
+    },
+    {
+        "dataset": "elevators",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.41095730662345886,
+        "nll": 0.5698115229606628,
+        "ast": false
+    },
+    {
+        "dataset": "elevators",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.43556275963783264,
+        "nll": 0.6046236157417297,
+        "ast": false
+    },
+    {
+        "dataset": "elevators",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.4040585160255432,
+        "nll": 0.5327125787734985,
+        "ast": false
+    },
+    {
+        "dataset": "elevators",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.42242053151130676,
+        "nll": 0.5719609260559082,
+        "ast": false
+    },
+    {
+        "dataset": "elevators",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.4157133996486664,
+        "nll": 0.5799897909164429,
+        "ast": false
+    },
+    {
+        "dataset": "elevators",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.3898584544658661,
+        "nll": 0.5276007652282715,
+        "ast": false
+    },
+    {
+        "dataset": "keggdirected",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.10452742874622345,
+        "nll": -0.18170775473117828,
+        "ast": false
+    },
+    {
+        "dataset": "keggdirected",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.10639997571706772,
+        "nll": -0.13493657112121582,
+        "ast": false
+    },
+    {
+        "dataset": "keggdirected",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.1367461085319519,
+        "nll": 0.004007949028164148,
+        "ast": false
+    },
+    {
+        "dataset": "keggdirected",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.09437514841556549,
+        "nll": -0.12838849425315857,
+        "ast": false
+    },
+    {
+        "dataset": "keggdirected",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.11974065005779266,
+        "nll": -0.09529216587543488,
+        "ast": false
+    },
+    {
+        "dataset": "keggdirected",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.10680049657821655,
+        "nll": -0.14090228080749512,
+        "ast": false
+    },
+    {
+        "dataset": "keggdirected",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.09071040153503418,
+        "nll": -0.6106356382369995,
+        "ast": false
+    },
+    {
+        "dataset": "keggdirected",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.1007239893078804,
+        "nll": -0.5607693791389465,
+        "ast": false
+    },
+    {
+        "dataset": "keggdirected",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.09107878804206848,
+        "nll": -0.49974438548088074,
+        "ast": false
+    },
+    {
+        "dataset": "keggdirected",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.10488420724868774,
+        "nll": -0.5295596718788147,
+        "ast": false
+    },
+    {
+        "dataset": "3droad",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.1499912291765213,
+        "nll": 0.545754075050354,
+        "ast": false
+    },
+    {
+        "dataset": "3droad",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.1525944471359253,
+        "nll": 0.5376168489456177,
+        "ast": false
+    },
+    {
+        "dataset": "3droad",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.14946527779102325,
+        "nll": 0.5520960688591003,
+        "ast": false
+    },
+    {
+        "dataset": "3droad",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.15256190299987793,
+        "nll": 0.5402151346206665,
+        "ast": false
+    },
+    {
+        "dataset": "3droad",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.1503431499004364,
+        "nll": 0.5449468493461609,
+        "ast": false
+    },
+    {
+        "dataset": "3droad",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.3299848735332489,
+        "nll": 0.7935566902160645,
+        "ast": false
+    },
+    {
+        "dataset": "3droad",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.31846898794174194,
+        "nll": 0.7782948017120361,
+        "ast": false
+    },
+    {
+        "dataset": "3droad",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.2839879095554352,
+        "nll": 0.7368075251579285,
+        "ast": false
+    },
+    {
+        "dataset": "3droad",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.32614749670028687,
+        "nll": 0.7796196937561035,
+        "ast": false
+    },
+    {
+        "dataset": "3droad",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.3158850073814392,
+        "nll": 0.7806134819984436,
+        "ast": false
+    },
+    {
+        "dataset": "bike",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.05940266326069832,
+        "nll": -0.7973423600196838,
+        "ast": false
+    },
+    {
+        "dataset": "bike",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.0674937516450882,
+        "nll": -0.7591451406478882,
+        "ast": false
+    },
+    {
+        "dataset": "bike",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.07153230160474777,
+        "nll": -0.7071770429611206,
+        "ast": false
+    },
+    {
+        "dataset": "bike",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.06287390738725662,
+        "nll": -0.7328141331672668,
+        "ast": false
+    },
+    {
+        "dataset": "bike",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.06536564975976944,
+        "nll": -0.6848036646842957,
+        "ast": false
+    },
+    {
+        "dataset": "bike",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.07864538580179214,
+        "nll": -0.7044245600700378,
+        "ast": false
+    },
+    {
+        "dataset": "bike",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.09337485581636429,
+        "nll": -0.7714452147483826,
+        "ast": false
+    },
+    {
+        "dataset": "bike",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.10192697495222092,
+        "nll": -0.6212294697761536,
+        "ast": false
+    },
+    {
+        "dataset": "bike",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.0815824344754219,
+        "nll": -0.6874594688415527,
+        "ast": false
+    },
+    {
+        "dataset": "bike",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.08206581324338913,
+        "nll": -0.7517311573028564,
+        "ast": false
+    },
+    {
+        "dataset": "kin40k",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.16871176660060883,
+        "nll": 0.40008875727653503,
+        "ast": false
+    },
+    {
+        "dataset": "kin40k",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.17511385679244995,
+        "nll": 0.43614014983177185,
+        "ast": false
+    },
+    {
+        "dataset": "kin40k",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.16776812076568604,
+        "nll": 0.5059264898300171,
+        "ast": false
+    },
+    {
+        "dataset": "kin40k",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.16869276762008667,
+        "nll": 0.5061590671539307,
+        "ast": false
+    },
+    {
+        "dataset": "kin40k",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.18207886815071106,
+        "nll": 0.5060853362083435,
+        "ast": false
+    },
+    {
+        "dataset": "kin40k",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.19523851573467255,
+        "nll": 0.3102472722530365,
+        "ast": false
+    },
+    {
+        "dataset": "kin40k",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.19809409976005554,
+        "nll": 0.4439758062362671,
+        "ast": false
+    },
+    {
+        "dataset": "kin40k",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.19377462565898895,
+        "nll": 0.34338241815567017,
+        "ast": false
+    },
+    {
+        "dataset": "kin40k",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.19949744641780853,
+        "nll": 0.45207348465919495,
+        "ast": false
+    },
+    {
+        "dataset": "kin40k",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.20650731027126312,
+        "nll": 0.3534972667694092,
+        "ast": false
+    },
+    {
+        "dataset": "protein",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.797301173210144,
+        "nll": 1.2165515422821045,
+        "ast": false
+    },
+    {
+        "dataset": "protein",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.8163611888885498,
+        "nll": 1.242178201675415,
+        "ast": false
+    },
+    {
+        "dataset": "protein",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.7991831302642822,
+        "nll": 1.2199052572250366,
+        "ast": false
+    },
+    {
+        "dataset": "protein",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.784378707408905,
+        "nll": 1.193872094154358,
+        "ast": false
+    },
+    {
+        "dataset": "protein",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.7934892177581787,
+        "nll": 1.2073050737380981,
+        "ast": false
+    },
+    {
+        "dataset": "protein",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.6888631582260132,
+        "nll": 1.0577446222305298,
+        "ast": false
+    },
+    {
+        "dataset": "protein",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.649185299873352,
+        "nll": 1.022379994392395,
+        "ast": false
+    },
+    {
+        "dataset": "protein",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.708078920841217,
+        "nll": 1.0711451768875122,
+        "ast": false
+    },
+    {
+        "dataset": "protein",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.67298823595047,
+        "nll": 1.049360990524292,
+        "ast": false
+    },
+    {
+        "dataset": "protein",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.6673402190208435,
+        "nll": 1.0431318283081055,
+        "ast": false
+    }
+]
