@@ -106,12 +106,53 @@ class CompositionalWarper():
             grad = grad * warper(param_lst[i]).grad(forward_cache[i])
         return grad
     
+    def log_grad_sum(self, params, x):
+        param_lst = torch.split(params, self.param_num_lst, dim=-1)
+        # forward pass
+        forward_cache = torch.zeros(len(self.warping_func_sequence), *x.shape).to(x.device)
+        forward_cache[0] = x
+        for i in range(1, len(self.warping_func_sequence)):
+            warper = self.warping_func_sequence[i-1]
+            forward_cache[i] += warper(param_lst[i-1])(x)
+        # backward pass
+        log_grad_sum = 0
+        for i in range(len(self.warping_func_sequence)-1, -1, -1):
+            warper = self.warping_func_sequence[i]
+            log_grad_sum += torch.log(torch.clamp(warper(param_lst[i]).grad(forward_cache[i]), min=1e-7)).sum()
+        return log_grad_sum
+    
     def inverse(self, params, y):
         param_lst = torch.split(params, self.param_num_lst, dim=-1)
         for i in range(len(self.warping_func_sequence)-1, -1, -1):
             warper = self.warping_func_sequence[i]
             y = warper(param_lst[i]).inverse(y)
         return y
+    
+
+"""
+A torch.autograd.Function for the computation of the target fit 0.5 * (\phi(y)-mu)^T K_{XX}^{-1} (\phi(y)-mu).
+The gradient of the target fit 0.5 * (\phi(y)-mu)^T K_{XX}^{-1} (\phi(y)-mu) is K_{XX}^{-1} (\phi(y)-mu) \nabla \phi(y) by the chain rule.
+Implemented using GPyTorch's LazyTensor for the computation of K_{XX}^{-1} (\phi(y)-mu).
+"""
+class TargetFit(torch.autograd.Function):
+    """
+    Forward pass: compute the target fit 0.5 * (\phi(y)-mu)^T K_{XX}^{-1} (\phi(y)-mu)
+    Input:
+        K: gpytorch.lazy.LazyTensor, the covariance matrix K_{XX}
+        target: torch.Tensor, the warped target values
+    """
+    def forward(ctx, K, demeaned_target):
+        solves = K.inv_matmul(demeaned_target) # compute K_{XX}^{-1} (\phi(y)-mu)
+        ctx.save_for_backward(solves) # cache K_{XX}^{-1} (\phi(y)-mu)
+        return 0.5 * (solves * demeaned_target).sum()
+    
+    """
+    Backward pass: compute the gradient of the target fit 0.5 * (\phi(y)-mu)^T K_{XX}^{-1} (\phi(y)-mu)
+    """
+    def backward(ctx, grad_output):
+        solves = ctx.saved_tensors[0]
+        grad_demeaned_target = solves * grad_output
+        return None, grad_demeaned_target # return None for the gradient of K_{XX} (not needed)
 
 
 class ExactGPModel(gpytorch.models.ExactGP):
@@ -135,17 +176,17 @@ if __name__ == '__main__':
 
     # Generate synthetic data that is hard to be modeled by a standard GP
     np.random.seed(0)
-    true_func = lambda x : np.sin(x) + 0.3 * np.sin(3*x)
+    true_func = lambda x : np.tanh(x)
     x = np.random.uniform(-10, 10, 2000)
     x = x[(x < -7) | ((x > -3) & (x < 4)) | (8 < x)]
-    y = true_func(x) + 0.05 * np.random.normal(0, 1, len(x)) * abs(x)
+    y = true_func(x) + 0.1 * np.random.normal(0, 1, len(x)) * np.exp(-0.1 * x)
 
     # Convert to torch tensors
     train_x = torch.tensor(x, dtype=torch.float32).unsqueeze(-1)
     train_y = torch.tensor(y, dtype=torch.float32)
 
     # Define the compositional warper module
-    m=20
+    m=10
     warping_sequence = ["sinh-arcsinh"] * m
     compose_warper = CompositionalWarper(warping_sequence)
 
@@ -153,11 +194,9 @@ if __name__ == '__main__':
     params = params.to(train_x.device).requires_grad_(True)
 
     mlp = torch.nn.Sequential(
-        torch.nn.Linear(1, 64),
+        torch.nn.Linear(1, 1024),
         torch.nn.Tanh(),
-        torch.nn.Linear(64, 64),
-        torch.nn.Tanh(),
-        torch.nn.Linear(64, params.shape[-1])
+        torch.nn.Linear(1024, params.shape[-1])
     )
 
     # Initialize weights of the MLP
@@ -180,34 +219,70 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(
         [
             {'params': model.parameters(), 'lr': 1e-2},
-            {'params': [params], 'lr': 1e-5},
-            {'params': mlp.parameters(), 'lr': 1e-5}
+            {'params': mlp.parameters(), 'lr': 1e-3},
+            # {'params': params, 'lr': 1e-4}
         ],
     )
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
 
-    # Print 
-
-    training_iter = 3000
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.999)
-    alpha = 1 # weight for the warping complexity
+    option = 2
+    training_iter = 500
     progress_bar = tqdm.tqdm(range(training_iter), desc="Training")
-    for i in progress_bar:
-        optimizer.zero_grad()
-        output = model(train_x)
-        target = compose_warper(mlp(train_x)+params, train_y)
-        model.set_train_data(train_x, target)
-        gaussian_loss = -mll(output, target) 
-        # param_grad = torch.autograd.grad(gaussian_loss, params, retain_graph=True)[0]
-        warping_complexity = torch.log(torch.clamp(compose_warper.grad(mlp(train_x)+params, train_y), min=1e-7)).sum()
-        loss = gaussian_loss - alpha * warping_complexity
-        loss.backward()
-        # torch.nn.utils.clip_grad_norm_(mlp.parameters(), 1.0, error_if_nonfinite=True)
-        # torch.nn.utils.clip_grad_norm_(params, 1.0, error_if_nonfinite=True)
-        optimizer.step()
-        scheduler.step()
+    if option == 1:
+        for i in progress_bar:
+            optimizer.zero_grad()
+            output = model(train_x)
 
-        progress_bar.set_postfix({'Gaussian Loss': gaussian_loss.item(), 'Warping Complexity': warping_complexity.item()})
+            # For the computation of partial derivatives of kernel hyperparameters
+            target = compose_warper(mlp(train_x)+params, train_y) 
+
+            marginal_log_likelihood = -mll(output, target.clone().detach()) # treat the warped output as a static target
+            marginal_log_likelihood.backward()
+
+            # # For the computation of partial derivatives of the warping parameters
+            # This may not be efficient (as it recomputes K_{XX}^{-1} target), but is simple to implement
+            lazy_covar_matrix = model.covar_module(train_x).clone().detach()
+            demeaned_target = target - model.mean_module(train_x).clone().detach()
+            num_data = train_x.size(0)
+            target_fit = TargetFit.apply(lazy_covar_matrix, demeaned_target) / num_data # compute the target fit
+            log_warping_complexity = compose_warper.log_grad_sum(mlp(train_x)+params, train_y) / num_data # compute the log gradient sum
+            warping_loss = target_fit - log_warping_complexity
+            warping_loss.backward()
+
+            optimizer.step()
+
+            progress_bar.set_postfix(
+                {
+                    'Gaussian Loss': marginal_log_likelihood.item(), 
+                    'Log Warping Complexity': (compose_warper.log_grad_sum(mlp(train_x)+params, train_y) / train_x.size(0)).item(),
+                    'Target Fit': target_fit.item(),
+                    # 'Last Layer Norm': (mlp(train_x)).norm().item(),
+                }
+            )
+    else:
+        for i in progress_bar:
+            optimizer.zero_grad()
+            output = model(train_x)
+
+            # For the computation of partial derivatives of kernel hyperparameters
+            target = compose_warper(mlp(train_x)+params, train_y) 
+
+            marginal_log_likelihood = -mll(output, target) # treat the warped output as a static target
+            marginal_log_likelihood.backward()
+
+            log_warping_complexity = compose_warper.log_grad_sum(mlp(train_x)+params, train_y) / train_x.size(0) # compute the log gradient sum
+            (-log_warping_complexity).backward()
+
+            optimizer.step()
+
+            progress_bar.set_postfix(
+                {
+                    'Gaussian Loss': marginal_log_likelihood.item(), 
+                    'Log Warping Complexity': log_warping_complexity.item(),
+                }
+            )
+
+    model.set_train_data(train_x, compose_warper(mlp(train_x)+params, train_y))
 
     model2 = ExactGPModel(train_x, train_y, likelihood)
 
@@ -216,7 +291,7 @@ if __name__ == '__main__':
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model2)
     optimizer = torch.optim.Adam(model2.parameters(), lr=1e-2)
 
-    training_iter = 200
+    training_iter = 100
     progress_bar = tqdm.tqdm(range(training_iter), desc="Training")
     for i in progress_bar:
         optimizer.zero_grad()
@@ -257,7 +332,7 @@ if __name__ == '__main__':
         upper = compose_warper.inverse(mlp(test_x)+params, upper)
         lower = compose_warper.inverse(mlp(test_x)+params, lower)
         # plt.subplot(1, 2, 2)
-        plt.plot(train_x.cpu().numpy(), train_y.cpu().numpy(), 'k.')
+        plt.plot(train_x.cpu().numpy(), train_y.cpu().numpy(), 'k.', zorder=1)
         plt.plot(test_x.cpu().numpy(), true_func(test_x.cpu().numpy()), 'black', linestyle='--')
         test_x = test_x.squeeze(-1)
         
