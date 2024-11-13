@@ -85,4 +85,18 @@ def summarize_statistics(file_path):
 if __name__ == "__main__":
     file_path = os.path.join(os.path.dirname(__file__), 'offline_subsampling_exp_done.json')
     summary = summarize_statistics(file_path)
-    print(json.dumps(summary, indent=4))
+    # Round the summary statistics to 2 decimal places
+    rounded_summary = {
+        dataset: {
+            method: {
+                'rmse_mean': round(stats['rmse_mean'], 4),
+                'rmse_std': round(stats['rmse_std'], 4),
+                'nll_mean': round(stats['nll_mean'], 4),
+                'nll_std': round(stats['nll_std'], 4)
+            }
+            for method, stats in methods.items()
+        }
+        for dataset, methods in summary.items()
+    }
+    
+    print(json.dumps(rounded_summary, indent=4))

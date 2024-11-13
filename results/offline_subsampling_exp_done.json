@@ -598,5 +598,105 @@
         "rmse": 0.6673402190208435,
         "nll": 1.0431318283081055,
         "ast": false
+    },
+    {
+        "dataset": "skillcraft",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.6858157515525818,
+        "nll": 1.0392197370529175,
+        "ast": false
+    },
+    {
+        "dataset": "skillcraft",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.7053046226501465,
+        "nll": 1.0774539709091187,
+        "ast": false
+    },
+    {
+        "dataset": "skillcraft",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.6978512406349182,
+        "nll": 1.0880895853042603,
+        "ast": false
+    },
+    {
+        "dataset": "skillcraft",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.6948472857475281,
+        "nll": 1.054693341255188,
+        "ast": false
+    },
+    {
+        "dataset": "skillcraft",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "FPS_keops",
+        "seed": 42,
+        "rmse": 0.6848180890083313,
+        "nll": 1.0434308052062988,
+        "ast": false
+    },
+    {
+        "dataset": "skillcraft",
+        "split": 0,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.6599442362785339,
+        "nll": 0.9976869821548462,
+        "ast": false
+    },
+    {
+        "dataset": "skillcraft",
+        "split": 1,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.7765740752220154,
+        "nll": 1.1463408470153809,
+        "ast": false
+    },
+    {
+        "dataset": "skillcraft",
+        "split": 2,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.7349398732185364,
+        "nll": 1.0952954292297363,
+        "ast": false
+    },
+    {
+        "dataset": "skillcraft",
+        "split": 3,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.7162830233573914,
+        "nll": 1.0844348669052124,
+        "ast": false
+    },
+    {
+        "dataset": "skillcraft",
+        "split": 4,
+        "fraction": 0.1,
+        "method": "random_sampling",
+        "seed": 42,
+        "rmse": 0.6485733985900879,
+        "nll": 0.9853660464286804,
+        "ast": false
     }
 ]
