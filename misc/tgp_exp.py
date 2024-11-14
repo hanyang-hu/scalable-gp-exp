@@ -1,7 +1,6 @@
 import torch
 import gpytorch
 
-
 """
 The base Warper class.
 Attributes:
@@ -161,6 +160,7 @@ class ExactGPModel(gpytorch.models.ExactGP):
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(
             gpytorch.kernels.MaternKernel(nu=5/2, ard_num_dims=train_x.shape[-1])
+            # gpytorch.kernels.SpectralMixtureKernel(num_mixtures=4, ard_num_dims=train_x.shape[-1])
         )
 
     def forward(self, x):
@@ -176,10 +176,10 @@ if __name__ == '__main__':
 
     # Generate synthetic data that is hard to be modeled by a standard GP
     np.random.seed(0)
-    true_func = lambda x : np.tanh(x)
+    true_func = lambda x : np.sin(x) + 0.3 * np.sin(3*x) + 0.5 * np.sin(5*x) + np.exp(x/5)
     x = np.random.uniform(-10, 10, 2000)
-    x = x[(x < -7) | ((x > -3) & (x < 4)) | (8 < x)]
-    y = true_func(x) + 0.1 * np.random.normal(0, 1, len(x)) * np.exp(-0.1 * x)
+    x = x[(x < -7) | ((x > -4) & (x < 4)) | (7 < x)]
+    y = true_func(x) + 0.05 * np.random.normal(0, 1, len(x)) + 0.07 * np.random.lognormal(0, 1, len(x))
 
     # Convert to torch tensors
     train_x = torch.tensor(x, dtype=torch.float32).unsqueeze(-1)
@@ -194,9 +194,9 @@ if __name__ == '__main__':
     params = params.to(train_x.device).requires_grad_(True)
 
     mlp = torch.nn.Sequential(
-        torch.nn.Linear(1, 1024),
+        torch.nn.Linear(1, 2048),
         torch.nn.Tanh(),
-        torch.nn.Linear(1024, params.shape[-1])
+        torch.nn.Linear(2048, params.shape[-1])
     )
 
     # Initialize weights of the MLP
@@ -216,40 +216,41 @@ if __name__ == '__main__':
     model.train()
     likelihood.train()
 
-    optimizer = torch.optim.Adam(
-        [
-            {'params': model.parameters(), 'lr': 1e-2},
-            {'params': mlp.parameters(), 'lr': 1e-3},
-            # {'params': params, 'lr': 1e-4}
-        ],
-    )
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
 
-    option = 2
+    option = 2 # Option 1 is not stable
     training_iter = 500
     progress_bar = tqdm.tqdm(range(training_iter), desc="Training")
     if option == 1:
+        optimizer_kernel = torch.optim.Adam(model.parameters(), lr=1e-2)
+        optimizer_tgp = torch.optim.Adam(mlp.parameters(), lr=1e-3, weight_decay=1e-2)
         for i in progress_bar:
-            optimizer.zero_grad()
+            optimizer_kernel.zero_grad()
+            optimizer_tgp.zero_grad()
+
             output = model(train_x)
 
             # For the computation of partial derivatives of kernel hyperparameters
-            target = compose_warper(mlp(train_x)+params, train_y) 
+            target = compose_warper(mlp(train_x)+params, train_y).detach()
 
-            marginal_log_likelihood = -mll(output, target.clone().detach()) # treat the warped output as a static target
+            marginal_log_likelihood = -mll(output, target) # treat the warped output as a static target
             marginal_log_likelihood.backward()
 
             # # For the computation of partial derivatives of the warping parameters
             # This may not be efficient (as it recomputes K_{XX}^{-1} target), but is simple to implement
             lazy_covar_matrix = model.covar_module(train_x).clone().detach()
-            demeaned_target = target - model.mean_module(train_x).clone().detach()
+            demeaned_target = compose_warper(mlp(train_x)+params, train_y) - model.mean_module(train_x).clone().detach()
             num_data = train_x.size(0)
             target_fit = TargetFit.apply(lazy_covar_matrix, demeaned_target) / num_data # compute the target fit
             log_warping_complexity = compose_warper.log_grad_sum(mlp(train_x)+params, train_y) / num_data # compute the log gradient sum
             warping_loss = target_fit - log_warping_complexity
             warping_loss.backward()
 
-            optimizer.step()
+            # Clip the gradient norm to prevent exploding gradients
+            torch.nn.utils.clip_grad_norm_(mlp.parameters(), max_norm=10.0)
+
+            optimizer_kernel.step()
+            optimizer_tgp.step()
 
             progress_bar.set_postfix(
                 {
@@ -260,6 +261,12 @@ if __name__ == '__main__':
                 }
             )
     else:
+        optimizer = torch.optim.Adam(
+            [
+                {'params': model.parameters(), 'lr': 1e-2},
+                {'params': mlp.parameters(), 'lr': 1e-3, 'weight_decay': 1e-2},
+            ],
+        )
         for i in progress_bar:
             optimizer.zero_grad()
             output = model(train_x)
@@ -273,12 +280,16 @@ if __name__ == '__main__':
             log_warping_complexity = compose_warper.log_grad_sum(mlp(train_x)+params, train_y) / train_x.size(0) # compute the log gradient sum
             (-log_warping_complexity).backward()
 
+            # Clip the gradient norm to prevent exploding gradients
+            torch.nn.utils.clip_grad_norm_(mlp.parameters(), max_norm=10.0)
+
             optimizer.step()
 
             progress_bar.set_postfix(
                 {
                     'Gaussian Loss': marginal_log_likelihood.item(), 
-                    'Log Warping Complexity': log_warping_complexity.item(),
+                    'Warping Complexity': log_warping_complexity.item(),
+                    'Lengthscale': model.covar_module.base_kernel.lengthscale.mean().item(),
                 }
             )
 
@@ -291,7 +302,6 @@ if __name__ == '__main__':
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model2)
     optimizer = torch.optim.Adam(model2.parameters(), lr=1e-2)
 
-    training_iter = 100
     progress_bar = tqdm.tqdm(range(training_iter), desc="Training")
     for i in progress_bar:
         optimizer.zero_grad()
@@ -300,7 +310,7 @@ if __name__ == '__main__':
         loss.backward()
         optimizer.step()
 
-        progress_bar.set_postfix({'Loss': loss.item()})
+        progress_bar.set_postfix({'Loss': loss.item(), 'Lengthscale': model2.covar_module.base_kernel.lengthscale.mean().item()})
 
     model2.eval()
 
@@ -332,7 +342,7 @@ if __name__ == '__main__':
         upper = compose_warper.inverse(mlp(test_x)+params, upper)
         lower = compose_warper.inverse(mlp(test_x)+params, lower)
         # plt.subplot(1, 2, 2)
-        plt.plot(train_x.cpu().numpy(), train_y.cpu().numpy(), 'k.', zorder=1)
+        plt.plot(train_x.cpu().numpy(), train_y.cpu().numpy(), 'k.')
         plt.plot(test_x.cpu().numpy(), true_func(test_x.cpu().numpy()), 'black', linestyle='--')
         test_x = test_x.squeeze(-1)
         
