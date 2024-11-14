@@ -14,5 +14,21 @@
         "iter": 100,
         "rmse": 0.3805428147315979,
         "nll": 0.5940553545951843
+    },
+    {
+        "dataset": "elevators",
+        "split": 0,
+        "seed": 42,
+        "prior": "Laplace",
+        "prior_weight": 1e-05,
+        "base_warper": "sinh-arcsinh",
+        "warping_layers": 20,
+        "hidden_dims": [
+            1024
+        ],
+        "exact_GP": false,
+        "iter": 500,
+        "rmse": 0.4172792136669159,
+        "nll": 0.7496007680892944
     }
 ]

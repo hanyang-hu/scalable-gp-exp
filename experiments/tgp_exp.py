@@ -3,6 +3,7 @@
 import torch, gpytorch
 from scripts import models
 from scripts.tgp import warping_func, CompositionalWarper
+import linear_operator
 
 
 class NeuralNetwork(torch.nn.Module):
@@ -38,7 +39,7 @@ if __name__ == '__main__':
     argparser.add_argument('--split', type=int, default=0, choices=range(0, 10), help="10-fold cross validation split of the dataset.")
     argparser.add_argument('--seed', type=int, default=42, help="Random seed, default to be 42.")
     argparser.add_argument('--prior', '-prior', type=str, default='Laplace', choices=['None', 'Laplace', 'Normal'], help="Subsampling method to use.")
-    argparser.add_argument('--prior_weight', type=float, default=0.1, help="Weights of the log prior term.")
+    argparser.add_argument('--prior_weight', type=float, default=1e-5, help="Weights of the log prior term.")
     argparser.add_argument('--base_warper', type=str, default='sinh-arcsinh', choices=warping_func.keys(), help="Sequence of the warping functions.")
     argparser.add_argument('--warping_layers', type=int, default=20, help="Number of warping layers.")
     argparser.add_argument('--hidden_dims', nargs='+', default=None, help="Specification of the hidden layers.")
@@ -89,73 +90,74 @@ if __name__ == '__main__':
 
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
 
-    if args.exact_GP:
-        # Set up the optimizer
-        optimizer = torch.optim.Adam(model.parameters(), lr=1e-1)
+    with linear_operator.settings.max_cg_iterations(3000):
+        if args.exact_GP:
+            # Set up the optimizer
+            optimizer = torch.optim.Adam(model.parameters(), lr=1e-1)
 
-        # Train the exact GP model
-        progress_bar = tqdm.trange(args.iter)
-        for i in progress_bar:
-            optimizer.zero_grad()
-            output = model(X_train) # model outputs
-            loss = -mll(output, y_train)
-            loss.backward()
-            optimizer.step()
+            # Train the exact GP model
+            progress_bar = tqdm.trange(args.iter)
+            for i in progress_bar:
+                optimizer.zero_grad()
+                output = model(X_train) # model outputs
+                loss = -mll(output, y_train)
+                loss.backward()
+                optimizer.step()
 
-            progress_bar.set_postfix({'Loss': loss.item()})
+                progress_bar.set_postfix({'Loss': loss.item()})
 
-    else:
-        # Build the warper and neural network
-        warper_sequence = [args.base_warper] * args.warping_layers
-        compose_warper = CompositionalWarper(warper_sequence)
-
-        if args.hidden_dims is not None:
-            args.hidden_dims = list(map(int, args.hidden_dims))
         else:
-            args.hidden_dims = [1024]
+            # Build the warper and neural network
+            warper_sequence = [args.base_warper] * args.warping_layers
+            compose_warper = CompositionalWarper(warper_sequence)
 
-        input_dim = X_train.shape[-1]
-        output_dim = compose_warper.num_params
+            if args.hidden_dims is not None:
+                args.hidden_dims = list(map(int, args.hidden_dims))
+            else:
+                args.hidden_dims = [1024]
 
-        mlp = NeuralNetwork(input_dim, args.hidden_dims, output_dim).to(device)
+            input_dim = X_train.shape[-1]
+            output_dim = compose_warper.num_params
 
-        # Set up the optimizer
-        optimizer = torch.optim.Adam(
-            [
-                {'params': model.parameters(), 'lr': 1e-1},
-                {'params': mlp.parameters(), 'lr': 1e-2},
-            ]
-        )
+            mlp = NeuralNetwork(input_dim, args.hidden_dims, output_dim).to(device)
 
-        # Train the TGP model
-        progress_bar = tqdm.trange(args.iter)
-        for i in progress_bar:
-            optimizer.zero_grad()
+            # Set up the optimizer
+            optimizer = torch.optim.Adam(
+                [
+                    {'params': model.parameters(), 'lr': 1e-1},
+                    {'params': mlp.parameters(), 'lr': 1e-3},
+                ]
+            )
 
-            # Get model outputs
-            output = model(X_train)
-            target = compose_warper(mlp(X_train), y_train)
+            # Train the TGP model
+            progress_bar = tqdm.trange(args.iter)
+            for i in progress_bar:
+                optimizer.zero_grad()
 
-            # Compute the loss terms
-            marginal_log_likelihood = -mll(output, target)
-            log_warping_complexity = compose_warper.log_grad_sum(mlp(X_train), y_train) / X_train.shape[0]
-            loss = marginal_log_likelihood - log_warping_complexity
-            if args.prior == 'Laplace':
-                loss += args.prior_weight * mlp(X_train).norm(p=1, dim=-1).mean()
-            if args.prior == 'Normal':
-                loss += args.prior_weight * mlp(X_train).norm(p=2, dim=-1).mean()
+                # Get model outputs
+                output = model(X_train)
+                target = compose_warper(mlp(X_train), y_train)
 
-            # Gradient clipping
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            torch.nn.utils.clip_grad_norm_(mlp.parameters(), 1.0)
-            
-            loss.backward()
+                # Compute the loss terms
+                marginal_log_likelihood = -mll(output, target)
+                log_warping_complexity = compose_warper.log_grad_sum(mlp(X_train), y_train) / X_train.shape[0]
+                loss = marginal_log_likelihood - log_warping_complexity
+                if args.prior == 'Laplace':
+                    loss += args.prior_weight * mlp(X_train).norm(p=1, dim=-1).mean()
+                if args.prior == 'Normal':
+                    loss += args.prior_weight * mlp(X_train).norm(p=2, dim=-1).mean()
 
-            optimizer.step()
+                # Gradient clipping
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                torch.nn.utils.clip_grad_norm_(mlp.parameters(), 1.0)
+                
+                loss.backward()
 
-            progress_bar.set_postfix({'Loss': marginal_log_likelihood.item(), 'Complexity': log_warping_complexity.item()})
+                optimizer.step()
 
-        model.set_train_data(X_train, compose_warper(mlp(X_train), y_train))
+                progress_bar.set_postfix({'Loss': marginal_log_likelihood.item(), 'Complexity': log_warping_complexity.item()})
+
+            model.set_train_data(X_train, compose_warper(mlp(X_train), y_train))
 
     # Test the model
     model.eval()
