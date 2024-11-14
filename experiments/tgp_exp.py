@@ -138,12 +138,16 @@ if __name__ == '__main__':
 
             # Compute the loss terms
             marginal_log_likelihood = -mll(output, target)
-            log_warping_complexity = compose_warper.log_grad_mean(mlp(X_train), y_train)
+            log_warping_complexity = compose_warper.log_grad_sum(mlp(X_train), y_train) / X_train.shape[0]
             loss = marginal_log_likelihood - log_warping_complexity
             if args.prior == 'Laplace':
                 loss += args.prior_weight * mlp(X_train).norm(p=1, dim=-1).mean()
             if args.prior == 'Normal':
                 loss += args.prior_weight * mlp(X_train).norm(p=2, dim=-1).mean()
+
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(mlp.parameters(), 1.0)
             
             loss.backward()
 

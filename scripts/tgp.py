@@ -111,7 +111,7 @@ class CompositionalWarper():
             grad = grad * warper(param_lst[i]).grad(forward_cache[i])
         return grad
     
-    def log_grad_mean(self, params, x):
+    def log_grad_sum(self, params, x):
         param_lst = torch.split(params, self.param_num_lst, dim=-1)
         # forward pass
         forward_cache = torch.zeros(len(self.warping_func_sequence), *x.shape).to(x.device)
@@ -124,7 +124,7 @@ class CompositionalWarper():
         for i in range(len(self.warping_func_sequence)-1, -1, -1):
             warper = self.warping_func_sequence[i]
             log_grad_sum += torch.log(torch.clamp(warper(param_lst[i]).grad(forward_cache[i]), min=1e-7)).sum()
-        return log_grad_sum / x.shape[0]
+        return log_grad_sum
     
     def inverse(self, params, y):
         param_lst = torch.split(params, self.param_num_lst, dim=-1)

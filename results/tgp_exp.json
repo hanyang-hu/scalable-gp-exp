@@ -1,0 +1,18 @@
+[
+    {
+        "dataset": "elevators",
+        "split": 0,
+        "seed": 42,
+        "prior": "Laplace",
+        "prior_weight": 0.1,
+        "base_warper": "sinh-arcsinh",
+        "warping_layers": 20,
+        "hidden_dims": [
+            1024
+        ],
+        "exact_GP": false,
+        "iter": 100,
+        "rmse": 0.3805428147315979,
+        "nll": 0.5940553545951843
+    }
+]
