@@ -140,22 +140,30 @@ if __name__ == '__main__':
 
                 # Compute the loss terms
                 marginal_log_likelihood = -mll(output, target)
-                log_warping_complexity = compose_warper.log_grad_sum(mlp(X_train), y_train) / X_train.shape[0]
+                log_warping_complexity = compose_warper.log_grad(mlp(X_train), y_train).mean()
                 loss = marginal_log_likelihood - log_warping_complexity
+                prior = torch.tensor(0.0).to(device)
                 if args.prior == 'Laplace':
-                    loss += args.prior_weight * mlp(X_train).norm(p=1, dim=-1).mean()
+                    prior += args.prior_weight * mlp(X_train).norm(p=1, dim=-1).mean()
                 if args.prior == 'Normal':
-                    loss += args.prior_weight * mlp(X_train).norm(p=2, dim=-1).mean()
+                    prior += args.prior_weight * mlp(X_train).norm(p=2, dim=-1).mean()
+                loss += prior
 
                 # Gradient clipping
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-                torch.nn.utils.clip_grad_norm_(mlp.parameters(), 1.0)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+                torch.nn.utils.clip_grad_norm_(mlp.parameters(), 10.0)
                 
                 loss.backward()
 
                 optimizer.step()
 
-                progress_bar.set_postfix({'Loss': marginal_log_likelihood.item(), 'Complexity': log_warping_complexity.item()})
+                progress_bar.set_postfix(
+                    {
+                        'Loss': marginal_log_likelihood.item(), 
+                        'Complexity': log_warping_complexity.item(),
+                        'Prior': prior.item(),
+                    }
+                )
 
             model.set_train_data(X_train, compose_warper(mlp(X_train), y_train))
 
@@ -171,9 +179,11 @@ if __name__ == '__main__':
             rmse = torch.sqrt(torch.mean((preds.mean - y_test) ** 2)).item()
             nll = -torch.distributions.Normal(preds.mean, preds.stddev).log_prob(y_test).mean().item()
         else:
+            inv_mean = compose_warper.inverse(mlp(X_test), preds.mean)
+            rmse = torch.sqrt(torch.mean((inv_mean - y_test) ** 2)).item()
+
             warped_y_test = compose_warper(mlp(X_test), y_test)
-            rmse = torch.sqrt(torch.mean((preds.mean - warped_y_test) ** 2)).item()
-            nll = -torch.distributions.Normal(preds.mean, preds.stddev).log_prob(warped_y_test).mean().item()
+            nll = -torch.distributions.Normal(preds.mean, preds.stddev).log_prob(warped_y_test).mean().item() - compose_warper.log_grad(mlp(X_test), y_test).mean().item()
 
     # Save the results
     # save the results to "./results/tgp_exp.json"

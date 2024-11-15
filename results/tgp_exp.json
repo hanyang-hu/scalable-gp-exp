@@ -30,5 +30,53 @@
         "iter": 500,
         "rmse": 0.4172792136669159,
         "nll": 0.7496007680892944
+    },
+    {
+        "dataset": "elevators",
+        "split": 0,
+        "seed": 42,
+        "prior": "Laplace",
+        "prior_weight": 1e-05,
+        "base_warper": "sinh-arcsinh",
+        "warping_layers": 20,
+        "hidden_dims": null,
+        "exact_GP": true,
+        "iter": 500,
+        "rmse": 0.36141371726989746,
+        "nll": 0.5938628911972046
+    },
+    {
+        "dataset": "elevators",
+        "split": 0,
+        "seed": 42,
+        "prior": "Laplace",
+        "prior_weight": 0.001,
+        "base_warper": "sinh-arcsinh",
+        "warping_layers": 20,
+        "hidden_dims": [
+            1024
+        ],
+        "exact_GP": false,
+        "iter": 500,
+        "rmse": 0.418454110622406,
+        "nll": 0.7743070125579834
+    },
+    {
+        "dataset": "elevators",
+        "split": 0,
+        "seed": 42,
+        "prior": "Laplace",
+        "prior_weight": 0.1,
+        "base_warper": "sinh-arcsinh",
+        "warping_layers": 20,
+        "hidden_dims": [
+            256,
+            512,
+            256
+        ],
+        "exact_GP": false,
+        "iter": 1000,
+        "rmse": 0.3667093515396118,
+        "nll": 0.6152791976928711
     }
 ]

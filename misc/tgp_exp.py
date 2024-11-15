@@ -179,7 +179,7 @@ if __name__ == '__main__':
     true_func = lambda x : np.sin(x) + 0.3 * np.sin(3*x) + 0.5 * np.sin(5*x) + np.exp(x/5)
     x = np.random.uniform(-10, 10, 2000)
     x = x[(x < -7) | ((x > -4) & (x < 4)) | (7 < x)]
-    y = true_func(x) + 0.05 * np.random.normal(0, 1, len(x)) + 0.07 * np.random.lognormal(0, 1, len(x))
+    y = true_func(x) + 0.1 * np.random.normal(0, 1, len(x)) * np.abs(x/2+5) + 0.1 * np.random.lognormal(0, 1, len(x))
 
     # Convert to torch tensors
     train_x = torch.tensor(x, dtype=torch.float32).unsqueeze(-1)
@@ -279,6 +279,8 @@ if __name__ == '__main__':
 
             log_warping_complexity = compose_warper.log_grad_sum(mlp(train_x)+params, train_y) / train_x.size(0) # compute the log gradient sum
             (-log_warping_complexity).backward()
+
+            (0.1 * mlp(train_x).norm(p=1, dim=-1).mean()).backward()
 
             # Clip the gradient norm to prevent exploding gradients
             torch.nn.utils.clip_grad_norm_(mlp.parameters(), max_norm=10.0)
